@@ -250,9 +250,24 @@
                     </applications>
                 </item>
                 <item>
+                    <name>Hardware</name>
+                    <type>TRAP</type>
+                    <key>inv.HardwareFullDetails</key>
+                    <delay>0</delay>
+                    <history>30d</history>
+                    <trends>0</trends>
+                    <value_type>TEXT</value_type>
+                    <inventory_link>HARDWARE</inventory_link>
+                    <applications>
+                        <application>
+                            <name>WinInventory-Panel</name>
+                        </application>
+                    </applications>
+                </item>
+                <item>
                     <name>Update WinInventory Template</name>
                     <type>ZABBIX_ACTIVE</type>
-                    <key>system.run[powershell.exe -NoProfile -ExecutionPolicy Bypass -command Invoke-WebRequest -Uri https://git.io/JUTv4 -OutFile $Env:Programfiles\'Zabbix Agent\plugins\get-inventory-v5.ps1',nowait]</key>
+                    <key>system.run[powershell.exe -NoProfile -ExecutionPolicy Bypass -command Invoke-WebRequest -Uri https://git.io/JUTv4 -OutFile $Env:Programfiles\'Zabbix Agent 2\zabbix_agent2.d\plugins.d\get-inventory-v5.ps1',nowait]</key>
                     <delay>1d</delay>
                     <history>30d</history>
                     <trends>0</trends>
@@ -266,7 +281,7 @@
                 <item>
                     <name>GetInventory</name>
                     <type>ZABBIX_ACTIVE</type>
-                    <key>system.run[powershell.exe -NoProfile -ExecutionPolicy Bypass -file &quot;%programfiles%\Zabbix Agent\plugins\get-inventory-v5.ps1&quot;,nowait]</key>
+                    <key>system.run[powershell.exe -NoProfile -ExecutionPolicy Bypass -file &quot;%programfiles%\Zabbix Agent 2\zabbix_agent2.d\plugins.d\get-inventory-v5.ps1&quot;,nowait]</key>
                     <delay>3h</delay>
                     <history>30d</history>
                     <trends>0</trends>
