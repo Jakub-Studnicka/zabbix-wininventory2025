@@ -1,26 +1,18 @@
-# Powershell script for Zabbix agents.
-
-# Version 2.1 - for Zabbix agent 5x
-
-## This script will read a number of hardware inventory items from Windows and report them to Zabbix. It will also fill out the inventory tab for the host with the information it gathers.
-
-#### Check https://github.com/SpookOz/zabbix-wininventory for the latest version of this script
-
 # ------------------------------------------------------------------------- #
 # Variables
 # ------------------------------------------------------------------------- #
 
 # Change $ZabbixInstallPath to wherever your Zabbix Agent is installed
 
-$ZabbixInstallPath = "$Env:Programfiles\Zabbix Agent"
-$ZabbixConfFile = "$Env:Programdata\zabbix"
+$ZabbixInstallPath = "$Env:Programfiles\Zabbix Agent 2"
+$ZabbixConfFile = "$Env:Programfiles\Zabbix Agent 2"
 
 # Do not change the following variables unless you know what you are doing
 
 $Sender = "$ZabbixInstallPath\zabbix_sender.exe"
 $Senderarg1 = '-vv'
 $Senderarg2 = '-c'
-$Senderarg3 = "$ZabbixConfFile\zabbix_agentd.conf"
+$Senderarg3 = "$ZabbixConfFile\zabbix_agent2.conf"
 $Senderarg4 = '-i'
 $Senderarg5 = '-k'
 $SenderargInvStatus = '\wininvstatus.txt'
@@ -47,44 +39,12 @@ $BIOSageInYears = (New-TimeSpan -Start ($BIOS.ConvertToDateTime($BIOS.releasedat
 $OperatingSystem = Get-WmiObject -Class Win32_OperatingSystem
 $OSInstallDate = ($OperatingSystem.ConvertToDateTime($OperatingSystem.InstallDate).ToShortDateString())
 $BIOSDate = $BIOS.ConvertToDateTime($BIOS.releasedate).ToShortDateString()
+$NumberOfProcessors = (Get-CimInstance -ClassName Win32_ComputerSystem).NumberOfProcessors
+$NumberOfCores = (Get-CimInstance -ClassName Win32_Processor | Measure-Object -Property NumberOfCores -Sum).Sum
+$NumberOfLogicalProcessors = (Get-CimInstance -ClassName Win32_Processor | Measure-Object -Property NumberOfLogicalProcessors -Sum).Sum 
 
-# ------------------------------------------------------------------------- #
-# This part gets location information. It turns on location tracking. If this is a privacy concern, you can to next comment
-# ------------------------------------------------------------------------- #
-
-	If (!(Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location")) {
-		New-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location" -Force | Out-Null
-	}
-	Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location" -Name "Value" -Type String -Value "Allow"
-	Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Sensor\Overrides\{BFA794E4-F964-4FDB-90F6-51056BFE4B44}" -Name "SensorPermissionState" -Type DWord -Value 1
-	Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\lfsvc\Service\Configuration" -Name "Status" -Type DWord -Value 1
-
-Add-Type -AssemblyName System.Device #Required to access System.Device.Location namespace
-$GeoWatcher = New-Object System.Device.Location.GeoCoordinateWatcher #Create the required object
-$GeoWatcher.Start() #Begin resolving current locaton
-
-while (($GeoWatcher.Status -ne 'Ready') -and ($GeoWatcher.Permission -ne 'Denied')) {
-    Start-Sleep -Milliseconds 100 #Wait for discovery.
-}  
-
-if ($GeoWatcher.Permission -eq 'Denied'){
-    $Latitude = '0'
-    $Longitude = '0'
-} else {
-    $Latitude = $GeoWatcher.Position.Location | Select Latitude,Longitude | foreach { $_.Latitude }
-    $Longitude = $GeoWatcher.Position.Location | Select Latitude,Longitude | foreach { $_.Longitude }
-}
-
-$outputGeoLocation = "- inv.Geolocation "
-$outputGeoLocation += '"'
-$outputGeoLocation += "$($Latitude)"
-$outputGeoLocation += ' '
-$outputGeoLocation += "$($Longitude)"
-$outputGeoLocation += '"'
-
-# ------------------------------------------------------------------------- #
-# Delete above here to remove location data
-# ------------------------------------------------------------------------- #
+$HardwareFullDetails = "Processors: $NumberOfProcessors; Cores: $NumberOfCores; Logical Processors: $NumberOfLogicalProcessors"
+$outputHardwareFullDetails = "- inv.HardwareFullDetails " + '"' + "$HardwareFullDetails" + '"'
 
 $outputWinOS = "- inv.WinOS "
 $outputWinOS += '"'
@@ -126,7 +86,20 @@ $outputBIOSDate += '"'
 $outputBIOSDate += "$($BIOSDate)"
 $outputBIOSDate += '"'
 
+$outputNumberOfProcessors = "- inv.NumberOfProcessors "
+$outputNumberOfProcessors += '"'
+$outputNumberOfProcessors += "$NumberOfProcessors"
+$outputNumberOfProcessors += '"'
 
+$outputNumberOfCores = "- inv.NumberOfCores "
+$outputNumberOfCores += '"'
+$outputNumberOfCores += "$NumberOfCores"
+$outputNumberOfCores += '"'
+
+$outputNumberOfLogicalProcessors = "- inv.NumberOfLogicalProcessors "
+$outputNumberOfLogicalProcessors += '"'
+$outputNumberOfLogicalProcessors += "$NumberOfLogicalProcessors"
+$outputNumberOfLogicalProcessors += '"'
 
 Write-Output "- inv.WinArch $Winarch" | Out-File -Encoding "ASCII" -FilePath $env:temp$SenderargInvStatus
 Add-Content $env:temp$SenderargInvStatus $outputWinOS
@@ -142,8 +115,8 @@ Add-Content $env:temp$SenderargInvStatus "- inv.IPGateway $IPGateway"
 Add-Content $env:temp$SenderargInvStatus "- inv.PrimDNSServer $PrimDNSServer"
 Add-Content $env:temp$SenderargInvStatus $outputBIOSDate
 Add-Content $env:temp$SenderargInvStatus $outputOSInstallDate
-Add-Content $env:temp$SenderargInvStatus $outputGeoLocation
 
+Add-Content $env:temp$SenderargInvStatus $outputHardwareFullDetails
 # ------------------------------------------------------------------------- #
 # This part sends the information in the temp file to Zabbix
 # ------------------------------------------------------------------------- #
